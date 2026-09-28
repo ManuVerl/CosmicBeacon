@@ -14,7 +14,7 @@
 
 - 🔭 **Astronomical events**: ISS flybys, visible planets, meteor showers, observable comets
 - 📡 **Radio-astronomical events**: ARISS ISS radio contacts, solar transit, Milky Way (Galactic Centre) transit
-- 📍 **Multiple observer positions**: name, icon, lat/lon (manual entry)
+- 📍 **Multiple observer positions**: name, icon, lat/lon — with **🎯 auto-detect** (geocoding by city name via Nominatim, or IP geolocation as fallback)
 - 🔄 **Automatic refresh** from free public data sources (CelesTrak TLE, JPL Horizons, IMO, MPC, ARISS)
 - 🎨 **5 colour themes**: Dark · Light · Teal · Pink · Navy (X11-inspired)
 - 🌍 **6 UI languages**: French · English · Spanish · Portuguese · German · Italian (auto-detected from system locale, saved across sessions)
@@ -95,7 +95,8 @@ src/
 │   ├── iss_radio.rs
 │   └── milky_way.rs     # Galactic Centre meridian transit
 ├── config/          # TOML settings persistence
-└── utils/           # Geo helpers, astronomical calculations
+└── utils/           # Geo helpers, astronomical calculations, geocoding
+    └── geocoding.rs     # Nominatim (name → lat/lon) + ip-api.com (IP → lat/lon)
 ```
 
 ---

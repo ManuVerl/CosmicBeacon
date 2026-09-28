@@ -1,7 +1,20 @@
 use crate::app::AstroFeedApp;
 use crate::i18n;
 use crate::model::position::{CoordAcquisition, Position, PositionIcon};
+use crate::ui::theme::{error_color, muted_color};
+use crate::utils::geocoding::{geocode_by_ip, geocode_name, GeoError};
 use egui::{Context, Window};
+use std::sync::{Arc, Mutex};
+use std::time::Instant;
+
+// ── Geo-lookup async state ────────────────────────────────────────────────────
+
+/// Result that a background geo thread writes back into form state.
+#[derive(Clone)]
+enum GeoResult {
+    Ok { lat: f64, lon: f64, display_name: String },
+    Err(String),
+}
 
 // ── Temporary form state stored in egui memory ────────────────────────────────
 
@@ -16,6 +29,15 @@ struct FormState {
     /// The active_position_index that was current before the user clicked a row
     /// to edit it. Restored when Cancel is pressed.
     prev_active_index: usize,
+    /// Shared slot written by the background geo-lookup thread.
+    geo_pending: Option<Arc<Mutex<Option<GeoResult>>>>,
+    /// Message shown below the Name/Lat/Lon rows (searching… / error text).
+    geo_status: Option<String>,
+    /// True when the current status is an error (vs. an info/searching message).
+    geo_is_error: bool,
+    /// Instant at which the search was started — used to enforce a 2 s minimum
+    /// display time for the "searching…" message so the user can actually read it.
+    geo_search_started_at: Option<Instant>,
 }
 
 // ── Public entry point ────────────────────────────────────────────────────────
@@ -27,6 +49,47 @@ pub fn show(app: &mut AstroFeedApp, ctx: &Context) {
 
     // Load form state from egui memory
     let mut form: FormState = ctx.data_mut(|d| d.get_temp(form_id).unwrap_or_default());
+
+    // ── Poll background geo thread ────────────────────────────────────────────
+    // Extract any finished result first (releasing the borrow), then apply mutations.
+    let finished_geo: Option<GeoResult> = form
+        .geo_pending
+        .as_ref()
+        .and_then(|slot| slot.try_lock().ok().and_then(|g| g.clone()));
+
+    if let Some(result) = finished_geo {
+        // Enforce minimum 2 s display of the "searching…" message.
+        let elapsed = form
+            .geo_search_started_at
+            .map(|t| t.elapsed().as_millis())
+            .unwrap_or(u128::MAX);
+
+        if elapsed >= 2_000 {
+            match result {
+                GeoResult::Ok { lat, lon, display_name } => {
+                    form.lat_s = format!("{:.6}", lat);
+                    form.lon_s = format!("{:.6}", lon);
+                    // Fill name only if it is still empty
+                    if form.name.trim().is_empty() {
+                        form.name = display_name;
+                    }
+                    form.geo_status  = None;
+                    form.geo_is_error = false;
+                }
+                GeoResult::Err(msg) => {
+                    form.geo_status  = Some(msg);
+                    form.geo_is_error = true;
+                }
+            }
+            form.geo_pending           = None;
+            form.geo_search_started_at = None;
+        } else {
+            // Result arrived too quickly — keep the slot alive so we re-poll next frame.
+            // Schedule a repaint after the remaining delay.
+            let remaining_ms = (2_000 - elapsed) as u64;
+            ctx.request_repaint_after(std::time::Duration::from_millis(remaining_ms));
+        }
+    }
 
     Window::new(i18n::t(&lang, "positions.title"))
         .id(egui::Id::new("positions_window"))
@@ -76,13 +139,17 @@ pub fn show(app: &mut AstroFeedApp, ctx: &Context) {
 
             // Deferred: handle click (set active + load form)
             if let Some((i, icon, name, lat, lon)) = clicked_idx {
-                form.prev_active_index = app.active_position_index;
-                app.active_position_index = i;
-                form.editing_index = Some(i);
-                form.icon  = icon;
-                form.name  = name;
-                form.lat_s = format!("{}", lat);
-                form.lon_s = format!("{}", lon);
+                form.prev_active_index     = app.active_position_index;
+                app.active_position_index  = i;
+                form.editing_index         = Some(i);
+                form.icon                  = icon;
+                form.name                  = name;
+                form.lat_s                 = format!("{}", lat);
+                form.lon_s                 = format!("{}", lon);
+                form.geo_pending           = None;
+                form.geo_status            = None;
+                form.geo_is_error          = false;
+                form.geo_search_started_at = None;
                 save_positions(app);
             }
 
@@ -128,19 +195,81 @@ pub fn show(app: &mut AstroFeedApp, ctx: &Context) {
                     });
             });
 
-            // Row 2: Name
+            // Row 2: Name + 🎯 button
+            let searching = form.geo_pending.is_some();
             ui.horizontal(|ui| {
                 ui.label(i18n::t(&lang, "positions.name"));
                 ui.add(egui::TextEdit::singleline(&mut form.name).desired_width(200.0));
+
+                // 🎯 auto-detect button — placed next to the name field
+                let geolocate_btn = ui
+                    .add_enabled(!searching, egui::Button::new("🎯"))
+                    .on_hover_text(i18n::t(&lang, "positions.geolocate_tooltip"));
+
+                if geolocate_btn.clicked() {
+                    let city_name = form.name.trim().to_string();
+                    let slot: Arc<Mutex<Option<GeoResult>>> = Arc::new(Mutex::new(None));
+                    form.geo_pending           = Some(Arc::clone(&slot));
+                    form.geo_status            = Some(i18n::t(&lang, "positions.geo_searching").to_string());
+                    form.geo_is_error          = false;
+                    form.geo_search_started_at = Some(Instant::now());
+                    form.lat_s.clear();
+                    form.lon_s.clear();
+
+                    let ctx_clone       = ctx.clone();
+                    let err_no_result   = i18n::t(&lang, "positions.geo_err_no_result").to_string();
+                    let err_network     = i18n::t(&lang, "positions.geo_err_network").to_string();
+                    let err_no_location = i18n::t(&lang, "positions.geo_err_no_location").to_string();
+
+                    std::thread::spawn(move || {
+                        let result = if !city_name.is_empty() {
+                            match geocode_name(&city_name) {
+                                Ok(ll) => GeoResult::Ok {
+                                    lat: ll.lat,
+                                    lon: ll.lon,
+                                    display_name: ll.display_name,
+                                },
+                                Err(GeoError::NoResult)        => GeoResult::Err(err_no_result),
+                                Err(GeoError::NetworkError(_)) => GeoResult::Err(err_network),
+                                Err(GeoError::NoLocationFound) => GeoResult::Err(err_no_location),
+                            }
+                        } else {
+                            match geocode_by_ip() {
+                                Ok(ll) => GeoResult::Ok {
+                                    lat: ll.lat,
+                                    lon: ll.lon,
+                                    display_name: ll.display_name,
+                                },
+                                Err(GeoError::NetworkError(_)) => GeoResult::Err(err_network),
+                                Err(_)                         => GeoResult::Err(err_no_location),
+                            }
+                        };
+
+                        if let Ok(mut guard) = slot.lock() {
+                            *guard = Some(result);
+                        }
+                        ctx_clone.request_repaint();
+                    });
+                }
             });
 
-            // Row 3: Lat / Lon
+            // Row 3: Lat / Lon (plain, no button here any more)
             ui.horizontal(|ui| {
                 ui.label(i18n::t(&lang, "positions.lat"));
                 ui.add(egui::TextEdit::singleline(&mut form.lat_s).desired_width(90.0));
                 ui.label(i18n::t(&lang, "positions.lon"));
                 ui.add(egui::TextEdit::singleline(&mut form.lon_s).desired_width(90.0));
             });
+
+            // Status message (searching… or error) — theme-aware colours, normal font size
+            if let Some(msg) = &form.geo_status {
+                let color = if form.geo_is_error {
+                    error_color(&app.settings.theme)
+                } else {
+                    muted_color(&app.settings.theme)
+                };
+                ui.label(egui::RichText::new(msg).color(color));
+            }
 
             // Row 4: Buttons
             ui.horizontal(|ui| {

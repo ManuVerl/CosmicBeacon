@@ -1,6 +1,6 @@
 # Cosmic Beacon — Functional & Technical Specification
 
-> Version: 0.2.0
+> Version: 0.3.0
 > Date: 2025
 > Status: **Active**
 
@@ -44,6 +44,25 @@ A **position** is described by:
 - The user may store **n** positions.
 - One position is designated as the **active position** used for event computation.
 - Deleting the active position redirects to the next available position.
+
+#### 3.1.1 Automatic coordinate detection
+
+A **🎯 button** next to the Lat/Lon fields triggers an automatic coordinate lookup without blocking the UI. The button is disabled while a lookup is in progress.
+
+| Condition | Strategy |
+|-----------|----------|
+| **Name field is filled** | Forward geocoding via **Nominatim** (OpenStreetMap) — resolves city/place name to lat/lon |
+| **Name field is empty** | IP geolocation via **ip-api.com** (free, no API key required) — resolves the machine's public IP to an approximate position |
+| **Both strategies fail** | A warning message is shown in the form; fields remain editable |
+
+Resolution is executed in a `std::thread::spawn` background thread. On completion, `egui` is notified via `ctx.request_repaint()` and the result is applied on the next frame:
+
+- **Success**: Lat/Lon fields are populated with 6 decimal places. If the name field was empty, it is also pre-filled with the resolved location name.
+- **Failure**: A localised ⚠ warning is displayed below the Lat/Lon row. Three distinct error states are distinguished: *name not found*, *network error*, *no position detected*.
+
+All error messages are translated in all 6 supported languages (keys `positions.geo_err_*`).
+
+> **Note**: GPS hardware access is not available in a desktop Rust/egui application; IP geolocation is used as the automatic fallback when no city name is provided.
 
 ### 3.2 Event Catalogue
 
@@ -307,6 +326,27 @@ Five themes are available, inspired by classic X11 window manager colour palette
 
 All coloured themes derive from `Visuals::dark()` to ensure readable contrast. The selection is applied immediately and persisted.
 
+### 5.1 Accessibility — Semantic colour tokens
+
+Two theme-aware colour functions are exposed in `src/ui/theme.rs` and must be used instead of hard-coded values wherever diagnostic feedback is shown:
+
+| Function | Purpose | WCAG AA contrast (≥ 4.5:1) |
+|----------|---------|-----------------------------|
+| `error_color(theme)` | Error / warning messages | ✅ Guaranteed on all 5 backgrounds |
+| `muted_color(theme)` | Secondary info, "searching…", coordinates | ✅ Guaranteed on all 5 backgrounds |
+
+Colour values per theme:
+
+| Theme | `error_color` | `muted_color` |
+|-------|---------------|---------------|
+| **Dark** | `#FF7070` — soft red | `#B4B9C8` — light grey |
+| **Light** | `#C0270A` — dark red | `#50586A` — mid grey |
+| **Teal** | `#FFB3B3` — light rose | `#A0E6E6` — teal-white |
+| **Pink** | `#FFD0A0` — apricot | `#E6BEE1` — soft lilac |
+| **Navy** | `#FF9E9E` — salmon | `#A0BEF5` — periwinkle |
+
+> **Rule**: never use `ui.visuals().weak_text_color()` or a hard-coded `Color32` for user-visible diagnostic labels. Always call `error_color()` or `muted_color()` from `src/ui/theme.rs`.
+
 ---
 
 ## 6. Technical Architecture
@@ -329,7 +369,7 @@ All coloured themes derive from `Visuals::dark()` to ensure readable contrast. T
 |-------|---------|
 | `eframe` / `egui` | UI framework |
 | `tokio` (full features) | Async runtime for background source fetches |
-| `reqwest` | Async HTTP client (rustls TLS) |
+| `reqwest` (blocking + json) | HTTP client (rustls TLS) — async source fetches **and** blocking geocoding calls in background threads |
 | `sgp4` | SGP4 orbital mechanics (ISS pass prediction) |
 | `quick-xml` | XML / RSS parsing (ARISS feed) |
 | `serde` / `serde_json` / `toml` | Serialisation |
@@ -381,7 +421,8 @@ cosmic-beacon/
     └── utils/
         ├── mod.rs
         ├── astro.rs           # Sun times, moon phase calculations
-        └── geo.rs             # Coordinate helpers
+        ├── geo.rs             # Coordinate helpers (Haversine, deg↔rad)
+        └── geocoding.rs       # Nominatim + IP-geolocation helpers
 ```
 
 ### 6.5 Data Flow
@@ -435,7 +476,8 @@ No embedded database is required. Events are recomputed from sources on each ref
 | **M4 — Radio astronomy** | ARISS contacts, solar transit, Milky Way transit | ✅ Done |
 | **M5 — Settings & polish** | 5 themes, sync report, sidebar ephemeris, app icon | ✅ Done |
 | **M6 — i18n & UX** | 6 languages, temporal navigation, stable window IDs | ✅ Done (v0.2.0) |
-| **M7 — Future** | Sky map view, event detail panel, packaging (AppImage / MSI) | 🔲 Planned |
+| **M7 — Geo auto-detect** | 🎯 Automatic lat/lon detection (Nominatim + IP geoloc) in position form | ✅ Done (v0.3.0) |
+| **M8 — Future** | Sky map view, event detail panel, packaging (AppImage / MSI) | 🔲 Planned |
 
 ---
 
@@ -450,4 +492,4 @@ No embedded database is required. Events are recomputed from sources on each ref
 
 ---
 
-*End of specification — Cosmic Beacon v0.2.0*
+*End of specification — Cosmic Beacon v0.3.0*

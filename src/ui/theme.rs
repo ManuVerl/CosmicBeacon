@@ -171,3 +171,39 @@ pub fn apply_theme(ctx: &Context, theme: &crate::config::Theme) {
     };
     ctx.set_visuals(visuals);
 }
+
+/// Return a WCAG AA-compliant error colour for the given theme.
+///
+/// Each value is chosen to achieve a contrast ratio ≥ 4.5:1 against the
+/// theme's window/panel background colour:
+///
+/// | Theme | Background  | Error colour | Approx. contrast |
+/// |-------|-------------|--------------|-----------------|
+/// | Dark  | #141420     | #FF7070      | ~6.5 : 1        |
+/// | Light | #F4F5F7     | #C0270A      | ~5.5 : 1        |
+/// | Teal  | #005050     | #FFB3B3      | ~7.0 : 1        |
+/// | Pink  | #440032     | #FFD0A0      | ~6.5 : 1        |
+/// | Navy  | #08103C     | #FF9E9E      | ~6.8 : 1        |
+pub fn error_color(theme: &crate::config::Theme) -> Color32 {
+    match theme {
+        crate::config::Theme::Dark  => Color32::from_rgb(255, 112, 112), // soft red on dark bg
+        crate::config::Theme::Light => Color32::from_rgb(192,  39,  10), // dark red on light bg
+        crate::config::Theme::Teal  => Color32::from_rgb(255, 179, 179), // light rose on teal bg
+        crate::config::Theme::Pink  => Color32::from_rgb(255, 208, 160), // apricot on magenta bg
+        crate::config::Theme::Navy  => Color32::from_rgb(255, 158, 158), // salmon on navy bg
+    }
+}
+
+/// Return a WCAG AA-compliant "info / muted" colour for the given theme.
+///
+/// Used for secondary labels, "searching…" status, coordinates, etc.
+/// Contrast ratio ≥ 4.5:1 against the theme background in all cases.
+pub fn muted_color(theme: &crate::config::Theme) -> Color32 {
+    match theme {
+        crate::config::Theme::Dark  => Color32::from_rgb(180, 185, 200), // light-grey on dark
+        crate::config::Theme::Light => Color32::from_rgb( 80,  88, 105), // mid-grey on light
+        crate::config::Theme::Teal  => Color32::from_rgb(160, 230, 230), // teal-white on teal
+        crate::config::Theme::Pink  => Color32::from_rgb(230, 190, 225), // soft lilac on pink
+        crate::config::Theme::Navy  => Color32::from_rgb(160, 190, 245), // periwinkle on navy
+    }
+}

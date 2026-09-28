@@ -450,6 +450,41 @@ pub fn t(lang: &Lang, key: &str) -> &'static str {
         (Lang::De, "positions.cancel_btn")  => "Abbrechen",
         (Lang::It, "positions.cancel_btn")  => "Annulla",
 
+        (Lang::Fr, "positions.geolocate_tooltip") => "Détecter automatiquement les coordonnées",
+        (Lang::En, "positions.geolocate_tooltip") => "Auto-detect coordinates",
+        (Lang::Es, "positions.geolocate_tooltip") => "Detectar coordenadas automáticamente",
+        (Lang::Pt, "positions.geolocate_tooltip") => "Detectar coordenadas automaticamente",
+        (Lang::De, "positions.geolocate_tooltip") => "Koordinaten automatisch erkennen",
+        (Lang::It, "positions.geolocate_tooltip") => "Rileva coordinate automaticamente",
+
+        (Lang::Fr, "positions.geo_searching") => "Recherche en cours…",
+        (Lang::En, "positions.geo_searching") => "Searching…",
+        (Lang::Es, "positions.geo_searching") => "Buscando…",
+        (Lang::Pt, "positions.geo_searching") => "A procurar…",
+        (Lang::De, "positions.geo_searching") => "Suche läuft…",
+        (Lang::It, "positions.geo_searching") => "Ricerca in corso…",
+
+        (Lang::Fr, "positions.geo_err_no_result")  => "⚠ Aucun résultat trouvé pour ce nom.",
+        (Lang::En, "positions.geo_err_no_result")  => "⚠ No result found for this name.",
+        (Lang::Es, "positions.geo_err_no_result")  => "⚠ No se encontró resultado para este nombre.",
+        (Lang::Pt, "positions.geo_err_no_result")  => "⚠ Nenhum resultado encontrado para este nome.",
+        (Lang::De, "positions.geo_err_no_result")  => "⚠ Kein Ergebnis für diesen Namen gefunden.",
+        (Lang::It, "positions.geo_err_no_result")  => "⚠ Nessun risultato trovato per questo nome.",
+
+        (Lang::Fr, "positions.geo_err_network")    => "⚠ Erreur réseau lors de la recherche.",
+        (Lang::En, "positions.geo_err_network")    => "⚠ Network error during search.",
+        (Lang::Es, "positions.geo_err_network")    => "⚠ Error de red durante la búsqueda.",
+        (Lang::Pt, "positions.geo_err_network")    => "⚠ Erro de rede durante a pesquisa.",
+        (Lang::De, "positions.geo_err_network")    => "⚠ Netzwerkfehler bei der Suche.",
+        (Lang::It, "positions.geo_err_network")    => "⚠ Errore di rete durante la ricerca.",
+
+        (Lang::Fr, "positions.geo_err_no_location") => "⚠ Impossible de détecter la position (GPS non disponible, géolocalisation IP échouée).",
+        (Lang::En, "positions.geo_err_no_location") => "⚠ Could not detect position (GPS unavailable, IP geolocation failed).",
+        (Lang::Es, "positions.geo_err_no_location") => "⚠ No se pudo detectar la posición (GPS no disponible, geolocalización IP fallida).",
+        (Lang::Pt, "positions.geo_err_no_location") => "⚠ Não foi possível detectar a posição (GPS indisponível, geolocalização IP falhou).",
+        (Lang::De, "positions.geo_err_no_location") => "⚠ Position konnte nicht erkannt werden (GPS nicht verfügbar, IP-Geolokalisierung fehlgeschlagen).",
+        (Lang::It, "positions.geo_err_no_location") => "⚠ Impossibile rilevare la posizione (GPS non disponibile, geolocalizzazione IP fallita).",
+
         // ── Sync report window ───────────────────────────────────────────────
         (Lang::Fr, "sync.title")            => "📋 Rapport de synchronisation",
         (Lang::En, "sync.title")            => "📋 Sync Report",
