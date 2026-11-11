@@ -140,7 +140,11 @@ pub fn show(app: &mut AstroFeedApp, ui: &mut Ui) {
                     ui.scroll_to_rect(r, Some(egui::Align::TOP));
                 }
 
-                event_row(ui, event, &lang);
+                let selected = app.selected_event == Some(event.id);
+                if event_row(ui, event, &lang, selected) {
+                    app.selected_event = Some(event.id);
+                    app.sky_view_open = true;
+                }
                 ui.separator();
             }
         });
@@ -148,7 +152,42 @@ pub fn show(app: &mut AstroFeedApp, ui: &mut Ui) {
 
 // ── Event row ──────────────────────────────────────────────────────────────
 
-fn event_row(ui: &mut Ui, event: &Event, lang: &crate::i18n::Lang) {
+/// Draws one event row. The whole row (icon, text and empty space) is a single
+/// click target; returns true when it was clicked.
+fn event_row(ui: &mut Ui, event: &Event, lang: &crate::i18n::Lang, selected: bool) -> bool {
+    // Reserve a background shape drawn behind the row content (filled once hover state is known).
+    let bg_idx = ui.painter().add(egui::Shape::Noop);
+
+    let content = ui.scope(|ui| {
+        // Selectable labels would swallow the clicks meant for the row.
+        ui.style_mut().interaction.selectable_labels = false;
+        event_row_content(ui, event, lang);
+    });
+
+    // Extend the row to the full available width so that empty space is clickable too.
+    let rect = egui::Rect::from_min_max(
+        content.response.rect.min,
+        egui::pos2(ui.max_rect().right(), content.response.rect.max.y),
+    );
+    let response = ui
+        .interact(rect, ui.id().with(("event_row", event.id)), egui::Sense::click())
+        .on_hover_cursor(egui::CursorIcon::PointingHand);
+
+    let fill = if selected {
+        Some(ui.visuals().selection.bg_fill.linear_multiply(0.5))
+    } else if response.hovered() {
+        Some(ui.visuals().widgets.hovered.weak_bg_fill)
+    } else {
+        None
+    };
+    if let Some(fill) = fill {
+        ui.painter().set(bg_idx, egui::Shape::rect_filled(rect, 2.0, fill));
+    }
+
+    response.clicked()
+}
+
+fn event_row_content(ui: &mut Ui, event: &Event, lang: &crate::i18n::Lang) {
     let icon = match event.category {
         Category::Astronomical => "🔭",
         Category::RadioAstronomical => "📡",

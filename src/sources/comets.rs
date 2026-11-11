@@ -121,6 +121,7 @@ fn parse_mpc_comets(
             freq_min_mhz: None,
             freq_max_mhz: None,
             listen_direction: None,
+            sky_track: None,
         });
 
         // 2. Radio-astronomical event — outgassing produces OH emission at 1667/1665 MHz
@@ -145,6 +146,7 @@ fn parse_mpc_comets(
                 freq_min_mhz: Some(1665.0),
                 freq_max_mhz: Some(22235.0),
                 listen_direction: None,
+                sky_track: None,
             });
         }
     }

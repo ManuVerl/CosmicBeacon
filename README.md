@@ -21,6 +21,7 @@
 - ⏱ **Temporal navigation bar**: jump to *Now* or seek to any date/time directly from the event list
 - 📋 **Sync report** window showing per-source status and last update time
 - 🌅 **Sidebar ephemeris**: real-time clock, sun arc widget (sunrise/sunset), moon phase disc
+- 🗺 **Sky preview window**: click any event row to open a detached, reusable window (movable to another screen) showing a simple sky view — horizon at the bottom, compass directions (N, NE, E, …), azimuth/elevation and the object(s) to aim at
 
 ---
 
@@ -78,6 +79,7 @@ src/
 ├── ui/              # UI components (egui panels and windows)
 │   ├── main_window.rs
 │   ├── event_list.rs    # Event list + temporal navigation bar
+│   ├── sky_view.rs      # Detached sky preview window
 │   ├── settings.rs
 │   ├── positions.rs
 │   ├── sidebar_info.rs  # Clock, sun arc, moon phase widgets

@@ -26,6 +26,12 @@ pub struct AstroFeedApp {
     /// Snapshot of `settings.disabled_sources` taken when the settings window opens.
     /// Used to restore the value if the window is closed without saving.
     pub settings_sources_snapshot: Option<Vec<String>>,
+    /// Event currently previewed in the sky view window.
+    pub selected_event: Option<uuid::Uuid>,
+    /// Whether the detached sky view window is open.
+    pub sky_view_open: bool,
+    /// Pan/zoom/time state of the sky view window.
+    pub sky_view: crate::ui::sky_view::SkyViewState,
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -76,6 +82,9 @@ impl AstroFeedApp {
             scroll_to_now: true,
             source_manager,
             settings_sources_snapshot: None,
+            selected_event: None,
+            sky_view_open: false,
+            sky_view: Default::default(),
         };
 
         // Trigger initial refresh if configured

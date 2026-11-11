@@ -4,6 +4,7 @@ pub mod event_list;
 pub mod event_detail;
 pub mod positions;
 pub mod settings;
+pub mod sky_view;
 pub mod sidebar_info;
 pub mod sync_report;
 pub mod theme;

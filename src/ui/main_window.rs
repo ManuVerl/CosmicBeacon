@@ -167,4 +167,7 @@ pub fn show(app: &mut AstroFeedApp, ctx: &Context, _frame: &mut eframe::Frame) {
     if app.show_about {
         crate::ui::about::show(app, ctx);
     }
+    if app.sky_view_open {
+        crate::ui::sky_view::show(app, ctx);
+    }
 }

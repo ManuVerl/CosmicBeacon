@@ -135,6 +135,7 @@ fn build_ariss_event(title: &str, description: &str, pub_date: &str) -> Option<E
         freq_min_mhz: Some(145.8),
         freq_max_mhz: Some(145.8),
         listen_direction: Some(SkyCoord { azimuth_deg: 0.0, elevation_deg: 0.0 }),
+        sky_track: None,
     })
 }
 

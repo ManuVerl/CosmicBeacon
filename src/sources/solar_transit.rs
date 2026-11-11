@@ -52,6 +52,7 @@ pub async fn fetch(
                 freq_min_mhz: Some(1400.0),
                 freq_max_mhz: Some(10000.0),
                 listen_direction: Some(SkyCoord { azimuth_deg: az, elevation_deg: el }),
+                sky_track: None,
             });
         }
 

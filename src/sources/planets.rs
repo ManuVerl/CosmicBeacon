@@ -200,5 +200,6 @@ fn make_planet_event(
         freq_min_mhz: None,
         freq_max_mhz: None,
         listen_direction: None,
+        sky_track: None,
     }
 }

@@ -1,5 +1,5 @@
 use crate::model::{
-    event::{AstronomicalType, Category, Event, EventType, SkyCoord},
+    event::{AstronomicalType, Category, Event, EventType, SkyCoord, SkyPoint},
     position::Position,
 };
 use chrono::{Duration, TimeZone, Utc};
@@ -65,6 +65,7 @@ pub async fn fetch(
     let mut pass_start = now;
     let mut max_elevation = 0.0_f64;
     let mut max_az = 0.0_f64;
+    let mut track: Vec<SkyPoint> = Vec::new();
 
     let step_secs = 60i64;
     let mut t = now;
@@ -84,15 +85,18 @@ pub async fn fetch(
             );
 
             if el > 10.0 {
+                let az = azimuth_deg(lat_rad, lon_rad, prediction.position, t);
                 if !in_pass {
                     in_pass = true;
                     pass_start = t;
                     max_elevation = el;
-                    max_az = azimuth_deg(lat_rad, lon_rad, prediction.position, t);
+                    max_az = az;
+                    track.clear();
                 } else if el > max_elevation {
                     max_elevation = el;
-                    max_az = azimuth_deg(lat_rad, lon_rad, prediction.position, t);
+                    max_az = az;
                 }
+                track.push(SkyPoint { time: t, azimuth_deg: az, elevation_deg: el });
             } else if in_pass {
                 in_pass = false;
                 let pass_end = t;
@@ -122,6 +126,7 @@ pub async fn fetch(
                     freq_min_mhz: None,
                     freq_max_mhz: None,
                     listen_direction: None,
+                    sky_track: Some(std::mem::take(&mut track)),
                 });
             }
         }

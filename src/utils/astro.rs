@@ -300,6 +300,14 @@ fn sun_ephemeris(dt: DateTime<Utc>) -> (f64, f64, f64) {
     (dec_rad, eot_min, ra_rad)
 }
 
+/// Sun's azimuth and altitude (degrees, 0° = North clockwise) at an arbitrary UTC time.
+pub fn sun_horizontal_position(dt: DateTime<Utc>, lat_deg: f64, lon_deg: f64) -> (f64, f64) {
+    let (dec_rad, _eot, ra_rad) = sun_ephemeris(dt);
+    let lst = local_sidereal_time(dt, lon_deg);
+    equatorial_to_horizontal(ra_rad.to_degrees() / 15.0, dec_rad.to_degrees(), lst, lat_deg)
+}
+
+
 /// Sunrise and sunset times for a given day and observer coordinates.
 #[derive(Debug, Clone)]
 pub struct SunTimes {

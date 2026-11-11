@@ -47,6 +47,16 @@ pub struct SkyCoord {
     pub elevation_deg: f64,
 }
 
+/// A timed horizontal position, used to describe the path of a moving object.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SkyPoint {
+    pub time: DateTime<Utc>,
+    /// Azimuth in degrees (0 = North, clockwise)
+    pub azimuth_deg: f64,
+    /// Elevation above horizon in degrees
+    pub elevation_deg: f64,
+}
+
 /// A single observable event.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Event {
@@ -67,6 +77,9 @@ pub struct Event {
     pub freq_max_mhz: Option<f64>,
     /// Radio-specific: listening direction
     pub listen_direction: Option<SkyCoord>,
+    /// Path of a moving object (e.g. ISS pass), sampled over time. None for fixed/unknown targets.
+    #[serde(default)]
+    pub sky_track: Option<Vec<SkyPoint>>,
 }
 
 #[allow(dead_code)]

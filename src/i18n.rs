@@ -1011,6 +1011,71 @@ pub fn t(lang: &Lang, key: &str) -> &'static str {
             Lang::Pt => "dezembro",   Lang::De => "Dezember",  Lang::It => "dicembre",
         },
 
+        // ── Sky preview window ───────────────────────────────────────────────
+        (Lang::Fr, "skyview.title")         => "Carte du ciel",
+        (Lang::En, "skyview.title")         => "Sky view",
+        (Lang::Es, "skyview.title")         => "Mapa del cielo",
+        (Lang::Pt, "skyview.title")         => "Mapa do céu",
+        (Lang::De, "skyview.title")         => "Himmelsansicht",
+        (Lang::It, "skyview.title")         => "Mappa del cielo",
+
+        (Lang::Fr, "skyview.recentre")      => "🎯 Recentrer",
+        (Lang::En, "skyview.recentre")      => "🎯 Recentre",
+        (Lang::Es, "skyview.recentre")      => "🎯 Recentrar",
+        (Lang::Pt, "skyview.recentre")      => "🎯 Recentrar",
+        (Lang::De, "skyview.recentre")      => "🎯 Zentrieren",
+        (Lang::It, "skyview.recentre")      => "🎯 Ricentra",
+
+        (Lang::Fr, "skyview.now")           => "⏱ Maintenant",
+        (Lang::En, "skyview.now")           => "⏱ Now",
+        (Lang::Es, "skyview.now")           => "⏱ Ahora",
+        (Lang::Pt, "skyview.now")           => "⏱ Agora",
+        (Lang::De, "skyview.now")           => "⏱ Jetzt",
+        (Lang::It, "skyview.now")           => "⏱ Adesso",
+
+        (Lang::Fr, "skyview.time")          => "Heure",
+        (Lang::En, "skyview.time")          => "Time",
+        (Lang::Es, "skyview.time")          => "Hora",
+        (Lang::Pt, "skyview.time")          => "Hora",
+        (Lang::De, "skyview.time")          => "Zeit",
+        (Lang::It, "skyview.time")          => "Ora",
+
+        (Lang::Fr, "skyview.no_position")   => "Position non disponible pour cet événement.",
+        (Lang::En, "skyview.no_position")   => "Position not available for this event.",
+        (Lang::Es, "skyview.no_position")   => "Posición no disponible para este evento.",
+        (Lang::Pt, "skyview.no_position")   => "Posição não disponível para este evento.",
+        (Lang::De, "skyview.no_position")   => "Position für dieses Ereignis nicht verfügbar.",
+        (Lang::It, "skyview.no_position")   => "Posizione non disponibile per questo evento.",
+
+        (Lang::Fr, "skyview.no_event")      => "Cliquez sur un événement pour afficher le ciel.",
+        (Lang::En, "skyview.no_event")      => "Click an event to display the sky.",
+        (Lang::Es, "skyview.no_event")      => "Haga clic en un evento para ver el cielo.",
+        (Lang::Pt, "skyview.no_event")      => "Clique num evento para ver o céu.",
+        (Lang::De, "skyview.no_event")      => "Klicken Sie auf ein Ereignis, um den Himmel anzuzeigen.",
+        (Lang::It, "skyview.no_event")      => "Fare clic su un evento per mostrare il cielo.",
+
+        (Lang::Fr, "skyview.no_observer")   => "Aucune position active : Soleil et Lune non affichés.",
+        (Lang::En, "skyview.no_observer")   => "No active position: Sun and Moon not shown.",
+        (Lang::Es, "skyview.no_observer")   => "Sin posición activa: Sol y Luna no mostrados.",
+        (Lang::Pt, "skyview.no_observer")   => "Sem posição ativa: Sol e Lua não mostrados.",
+        (Lang::De, "skyview.no_observer")   => "Keine aktive Position: Sonne und Mond nicht angezeigt.",
+        (Lang::It, "skyview.no_observer")   => "Nessuna posizione attiva: Sole e Luna non mostrati.",
+
+        (Lang::Fr, "skyview.sun")           => "Soleil",
+        (Lang::En, "skyview.sun")           => "Sun",
+        (Lang::Es, "skyview.sun")           => "Sol",
+        (Lang::Pt, "skyview.sun")           => "Sol",
+        (Lang::De, "skyview.sun")           => "Sonne",
+        (Lang::It, "skyview.sun")           => "Sole",
+
+        (Lang::Fr, "skyview.moon")          => "Lune",
+        (Lang::En, "skyview.moon")          => "Moon",
+        (Lang::Es, "skyview.moon")          => "Luna",
+        (Lang::Pt, "skyview.moon")          => "Lua",
+        (Lang::De, "skyview.moon")          => "Mond",
+        (Lang::It, "skyview.moon")          => "Luna",
+
+
         // ── Fallback ─────────────────────────────────────────────────────────
         _ => "?",
     }

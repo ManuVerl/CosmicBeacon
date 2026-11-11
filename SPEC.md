@@ -265,7 +265,7 @@ When the Moon stays permanently above or below the horizon, the rise/set fields 
 
 ### 3.8 Event Display
 
-- **List view**: chronological list with category icon, title, localised date/time, sky position (Az/El), and frequency range for radio events.
+- **List view**: chronological list with category icon, title, localised date/time, sky position (Az/El), and frequency range for radio events. The **whole row is clickable** and opens the sky preview window (§3.10).
 - **Dimming**: past events (end time < now) are displayed at reduced opacity.
 - **Filters** (sidebar):
   - By category: Astronomical 🔭 / Radio-Astronomical 📡 / All
@@ -280,6 +280,109 @@ When the Moon stays permanently above or below the horizon, the rise/set fields 
 | Active position | Any registered position | First created |
 
 All settings are persisted to `{config_dir}/cosmic-beacon/cosmic_beacon_config.toml` (TOML format) and restored on the next launch.
+
+---
+
+### 3.10 Sky Preview Window
+
+> Status: **Implemented (M8)** — v1 as described below; see the "v1 notes" in §3.10.6.
+
+A lightweight "mini sky map" in the spirit of Google Sky Map, limited to what is needed to know **where to look** for a given event.
+
+#### 3.10.1 Opening and selection
+
+| Rule | Behaviour |
+|------|-----------|
+| **Click target** | The **entire event row** (icon, title, date, description and empty space) is a single click target. Hovering highlights the row and shows a pointer cursor |
+| **First click** | Opens the sky preview in a **separate OS-level window** (egui multi-viewport), independent from the main window: it can be moved to another screen, resized, minimised, and closed on its own |
+| **Subsequent clicks** | The **same window is reused**: it is refreshed with the newly selected event (no second window). If it was closed, it is reopened |
+| **Selected row** | The row of the event being previewed is highlighted in the list |
+| **Closing** | Closing the preview window deselects the event. Closing the main window closes the preview too |
+| **Non-blocking** | The preview is rendered on the UI thread but never performs I/O; any computation it needs is local and cheap (< 1 ms/frame) |
+
+#### 3.10.2 Layout
+
+Panoramic view with the **horizon at the bottom**, azimuth on the horizontal axis and elevation on the vertical axis (equirectangular, same degrees-per-pixel scale on both axes):
+
+```
+ El
+ 60° ┤
+     │                 ✦ Jupiter (Az 142°  El 38°)
+ 30° ┤
+     │      ☾ Moon
+  0° ┼──┬─────┬─────┬─────┬─────┬─────┬─────┬── horizon
+     │  E    SE    S    SW    W
+  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ ground
+  [ title · date · Az / El · equipment ]
+```
+
+| Element | Description |
+|---------|-------------|
+| **Horizon line** | Fixed at the bottom of the view (elevation 0°), with a thin shaded "ground" band below it |
+| **Cardinal labels** | Along the horizon: N, NE, E, SE, S, SW, W, NW (localised, same 16-point scheme as `azimuth_to_compass_key`), plus a tick every 15° and the numeric azimuth at each label |
+| **Elevation scale** | Graduations every 10° on the left edge |
+| **Initial orientation** | The view is centred on the azimuth of the target, default field of view **120°** horizontally |
+| **Interaction** | Drag horizontally to pan in azimuth (wraps at 360°); mouse wheel to zoom (field of view 30° … 180°); a **Recentre** button restores the target |
+| **Target marker** | Highlighted reticle with label and exact `Az xxx.x°  El xx.x°` and compass abbreviation |
+| **Context objects** | Sun and Moon, when above the horizon or less than 10° below it at the reference time (reuses `astro.rs`). Drawn smaller and muted so that they never hide the target |
+| **Info bar** | Event title, localised date/time, equipment, description (when present) |
+| **Theme** | Follows the current theme and uses `error_color()` / `muted_color()` for diagnostic text (§5.1) |
+
+#### 3.10.3 Reference time
+
+The view shows the sky at a **reference time** `t_ref`:
+
+- Default: `start_time` of the event (for single-point events such as transits: the transit time).
+- A **time slider** spans `[start_time, end_time]` for events with a duration (ISS flyover, planet visibility window) and moves the target along its path. A **Now** button sets `t_ref` to the current time when it lies within the event window.
+
+#### 3.10.4 Content per event type
+
+| Event type | What is drawn |
+|------------|---------------|
+| `IssFlyover` | Full **trajectory** (polyline from rise to set) with start / max-elevation / end markers and direction arrow; moving marker at `t_ref` |
+| `PlanetVisible` | The planet at `t_ref` (position recomputed for `t_ref`, see §3.10.5) |
+| `SolarTransit` | The Sun at the meridian (Az ≈ 180° in the northern hemisphere / 0° in the southern) |
+| `MilkyWayTransit` | Galactic Centre (Sgr A*) at the meridian, marked with a distinct symbol |
+| `IssRadio` | Listening direction when known; otherwise an explanatory message |
+| `CometVisible`, `MeteorShower`, `CometTransit`, `Other` | No sky position is currently available: empty sky with a localised "position not available for this event" message and the info bar. *(Future: radiant of a meteor shower, comet ephemeris)* |
+
+When the event has no usable position, the window still opens (so that the user gets consistent behaviour) but no target marker is drawn.
+
+#### 3.10.5 Data model impact
+
+The current `Event` carries a **single** `sky_position`, which is not sufficient for a moving object. Required changes:
+
+| Change | Detail |
+|--------|--------|
+| **New field** `sky_track: Option<Vec<SkyPoint>>` on `Event` | `SkyPoint { time: DateTime<Utc>, azimuth_deg: f64, elevation_deg: f64 }`, sampled every 30–60 s for ISS passes (already computed by the SGP4 loop in `iss_passes.rs`). `None` for fixed or unknown targets. Serde-compatible (`#[serde(default)]`) |
+| **Planets** | `planets.rs` currently stores the az/el of the last sample of the visibility window. The preview needs the position at `t_ref`: either fill `sky_track` from the JPL samples already fetched, or compute it locally from the ephemeris. Decision recorded in Open Questions |
+| **Observer position** | The preview uses the active position (§3.1) to compute Sun/Moon context objects. If the active position changes, the preview is refreshed |
+| **App state** | New fields in `AstroFeedApp`: `selected_event: Option<Uuid>` and `sky_view_open: bool` |
+
+#### 3.10.6 Implementation notes
+
+- Uses egui/eframe 0.27 multi-viewport API (`Context::show_viewport_deferred` or `show_viewport_immediate`) with a fixed `ViewportId` so that the same window is reused. Works with both the glow and wgpu backends. Because the preview reads shared state, `show_viewport_immediate` is preferred (access to `&mut` app state without `Arc`).
+- Row click is implemented by interacting with the whole row rectangle (`Sense::click()`) in `src/ui/event_list.rs`, with hover/selected background painted behind the content.
+- Drawing is done with `egui::Painter` primitives only (lines, circles, text); no new dependency.
+- New module `src/ui/sky_view.rs`; new helper(s) in `src/utils/astro.rs` for sun altitude/azimuth at an arbitrary time (the logic exists inside `calculate_sun_times`).
+- Window position and size are not persisted in the first version.
+
+**v1 notes (as implemented)**
+
+- `PlanetVisible` events have no `sky_track` (JPL samples are 3 days apart); the planet is drawn at the `sky_position` stored in the event (position at maximum elevation of the window) and no time slider is shown. Local planet ephemeris remains Q5.
+- `sky_track` is filled for `IssFlyover` only (60 s samples, elevation > 10°).
+- `IssRadio` events have a placeholder listening direction (Az 0° / El 0°) which is deliberately **not** treated as a target.
+- Sun and Moon are drawn when their altitude is above −10° at `t_ref`.
+- If the multi-viewport backend is unavailable (`ViewportClass::Embedded`), the preview falls back to a floating egui window.
+- Unit tests in `src/ui/sky_view.rs` cover azimuth wrap-around, track interpolation and the Sun helper (`astro::sun_horizontal_position`).
+
+#### 3.10.7 Internationalisation
+
+New translation keys, in all 6 languages: `skyview.title`, `skyview.recentre`, `skyview.now`, `skyview.no_position`, `skyview.target`, `skyview.sun`, `skyview.moon`, `skyview.time`. Cardinal labels reuse the existing compass keys.
+
+#### 3.10.8 Out of scope (v1)
+
+Star catalogue, constellations, deep-sky objects, device orientation sensors (gyroscope/compass), augmented-reality overlay, night-vision red mode.
 
 ---
 
@@ -395,6 +498,7 @@ cosmic-beacon/
     │   ├── main_window.rs     # Main layout: menu, status bar, sidebar, central panel
     │   ├── event_list.rs      # Event list + temporal navigation bar
     │   ├── event_detail.rs    # Event detail view (stub)
+    │   ├── sky_view.rs        # Detached sky preview window (§3.10)
     │   ├── positions.rs       # Position management window
     │   ├── settings.rs        # Settings window (theme, language, update freq)
     │   ├── sidebar_info.rs    # Clock, sun arc widget, moon phase widget
@@ -477,7 +581,8 @@ No embedded database is required. Events are recomputed from sources on each ref
 | **M5 — Settings & polish** | 5 themes, sync report, sidebar ephemeris, app icon | ✅ Done |
 | **M6 — i18n & UX** | 6 languages, temporal navigation, stable window IDs | ✅ Done (v0.2.0) |
 | **M7 — Geo auto-detect** | 🎯 Automatic lat/lon detection (Nominatim + IP geoloc) in position form | ✅ Done (v0.3.0) |
-| **M8 — Future** | Sky map view, event detail panel, packaging (AppImage / MSI) | 🔲 Planned |
+| **M8 — Sky preview window** | Clickable event rows + detached sky preview window (§3.10) | ✅ Done |
+| **M9 — Future** | Packaging (AppImage / MSI), extended sky map (stars, constellations) | 🔲 Planned |
 
 ---
 
@@ -485,10 +590,14 @@ No embedded database is required. Events are recomputed from sources on each ref
 
 | # | Question |
 |---|----------|
-| Q1 | Add a polar sky map view (azimuthal projection) for a future minor release? |
+| Q1 | Add a polar (all-sky, azimuthal projection) variant of the sky preview, in addition to the panoramic view of §3.10? |
 | Q2 | Package as AppImage (Linux) and NSIS/MSI installer (Windows)? |
 | Q3 | Add a SQLite event cache for faster restarts when sources are slow? |
 | Q4 | Expose an optional HTTP/WebSocket API for integration with external tools? |
+| Q5 | Sky preview: compute planet positions locally (e.g. VSOP87 / Meeus) or reuse the JPL Horizons samples as `sky_track`? |
+| Q6 | Sky preview: persist window position/size (useful for multi-screen setups)? |
+| Q7 | Sky preview: add meteor-shower radiants (fixed RA/Dec per shower) so that `MeteorShower` events also get a target? |
+| Q8 | Sky preview: add a red "night vision" display mode? |
 
 ---
 
